@@ -1,27 +1,58 @@
 # fasthax
 
-# WARNING
+This is an exploit for an ARM11 kernel vulnerability in Nintendo 3DS versions
+<= 11.2.
 
-This is an *alpha* release. Consider it a PoC that the bug is exploitable,
-nothing more. It's not ready to be used by the public, and it's not integrated
-with any user-friendly tools. Also, this *won't* let you downgrade or anything
-requiring ARM9 access without another bug. This just gives access to all SVCs
-on ARM11.
+Core 1 (SYSCORE) runs a thread that handles a synchronization event
+queue. Objects added to the queue do not have their reference count incremented.
+When the thread goes to fetch an object, it locks the scheduler, but this
+doesn't prevent a user thread on core 0 from freeing the timer object, thus
+leading to a UAF. Because a vtable pointer is located at the free pointer
+location, this leads to kernel code execution. Many workarounds are needed for
+stability; those are documented as part of the codebase.
+
+This exploit installs `svcBackdoor` at SVC numbers 0x30 and 0x7b.
+
+# Credits
+@nedwill: Vulnerability discovery and exploit code for N3DS USA 11.2, fixes to get 100% stability
+
+@d3m3vilurr: Found offsets for all versions of O3DS/N3DS, many bugfixes, ACL patching
+
+@Steveice10: SVC ACL check patch
+
+@kim-yannick: O3DS 11.2 support, rounding error fix
+
+@kade-robertson: Travis support
+
+@de0u: Teaching me how to find this bug
+
+[Luma3DS][Luma3DS]: svcBackdoor implementation bytes
+
+[waithax][waithax]: some snippets related to finding svcBackdoor
+
+If I missed anyone/anything, feel free to ping me.
 
 # Building
 
-Just run `make` with devkitpro and ctrulib installed. This is a normal homebrew application that is meant to be launched as a 3dsx.
+Binaries are available on the release page. Otherwise, just run `make` with
+devkitpro and ctrulib installed. This is a normal homebrew application that is
+meant to be launched as a `.3dsx`.
 
-# Info
+# For homebrew application developers
 
-This is currently an alpha targeted to N3DS 11.2 only.
+User applications should not embed kernel exploit code to ensure compatibility
+for future ARM11 kernel exploits, and to allow updates to existing exploits.
 
-The bug is present on previous versions (as least as low as 11.0), but the last
-jump to a kernel function relies on an 11.2-only offset.
+All current ARM11 kernel exploit projects (currently, [waithax][waithax]
+and this project) install a backdoor to SVC 0x30, as this SVC is originally
+stubbed, and always permitted by ACL. This means any process can run code
+in the context of the kernel without invasive kernel modifications.
 
-All current offsets, etc. are USA N3DS only, accepting PRs to fix that.
+SVC 0x7B is also available as a backdoor for compatibility purposes.
 
-I'm using my own backdoor SVC (0x2f), and this installs another custom backdoor
-SVC (0x30). These are normally stubbed, unprivileged SVCs, so that's why I used
-them. We'll want to remove any dependency on those SVCs and reinstall a backdoor
-to 0x7b and unlock all SVCs to be used by other apps.
+For more detailed code examples, please check [Mrrraou][Mrrraou]'s [snippets][snippets].
+
+[waithax]: https://github.com/Mrrraou/waithax
+[Mrrraou]: https://github.com/Mrrraou
+[snippets]: https://gist.github.com/Mrrraou/c74572c04d13c586d363bf64eba0d3a1
+[Luma3DS]: https://github.com/AuroraWright/Luma3DS
